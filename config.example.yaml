@@ -1,0 +1,48 @@
+defaults:
+  interval_minutes: 60
+  notify: [console]          # add ntfy once NTFY_TOPIC is set in .env
+  cooldown_hours: 24         # minimum gap between identical alerts for one product
+  failure_threshold: 3       # consecutive failed checks before a "source broken" alert
+  request_delay_seconds: 3   # minimum gap between requests to the same host
+
+watch:
+  # Prefer structured data (schema.org JSON-LD); it survives redesigns better than selectors.
+  - name: Example product (JSON-LD)
+    url: https://shop.example/p/123
+    extract: {type: jsonld}
+    rules:
+      - price_below: 80
+      - back_in_stock: true
+
+  # Fall back to CSS selectors when a page has no usable structured data.
+  - name: Example product (CSS)
+    url: https://other-shop.example/item/456
+    interval_minutes: 30
+    extract:
+      type: css
+      price: ".product-price .current"
+      stock: ".availability"
+      in_stock_text: ["in stock", "в наличност"]
+    rules:
+      - drop_percent: 15
+      - all_time_low: true
+      - out_of_stock: true       # silent by default; add "priority: 4" to make it loud
+
+discover:
+  # New game deals via the CheapShark API (1 Steam, 7 GOG, 11 Humble Store).
+  - name: Game deals
+    source: cheapshark
+    stores: [1, 7]
+    max_alerts: 3
+    filters:
+      max_price: 10
+      min_discount_pct: 80
+      min_rating: 85
+      min_rating_count: 200
+      keywords_none: [soundtrack, dlc]
+
+  # Any RSS/Atom feed, matched on title keywords.
+  # - name: Deals feed
+  #   source: rss
+  #   url: https://example.com/deals.rss
+  #   filters: {keywords_any: [roguelike, strategy]}
